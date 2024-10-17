@@ -2,7 +2,7 @@ package tfar.keepbedinventory;
 
 import net.fabricmc.api.ModInitializer;
 
-public class ExampleMod implements ModInitializer {
+public class KeepBedInventoryFabric implements ModInitializer {
     
     @Override
     public void onInitialize() {

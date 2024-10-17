@@ -1,3 +1,4 @@
 accessWidener v1 named
 
 accessible class net/minecraft/server/level/ServerPlayer$RespawnPosAngle
+accessible method net/minecraft/server/level/ServerPlayer$RespawnPosAngle <init> (Lnet/minecraft/world/phys/Vec3;F)V

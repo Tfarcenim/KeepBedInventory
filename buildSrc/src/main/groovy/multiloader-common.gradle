@@ -1,6 +1,8 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    // It's safest to have this on 2.+ to get the latest features and
+    // bug fixes without having to worry about breaking changes.
 }
 
 base {
