@@ -1,10 +1,8 @@
 package tfar.keepbedinventory;
 
-import net.minecraft.world.item.ItemStack;
-
-import java.util.List;
-
 public interface ServerPlayerDuck {
+    int getSavedLevels();
+    void setSavedLevels(int levels);
     long getLastValidTimestamp();
     void setLastValidTimestamp(long timestamp);
 

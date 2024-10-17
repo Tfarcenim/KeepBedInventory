@@ -2,7 +2,10 @@ package tfar.keepbedinventory;
 
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.GameRules;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -39,6 +42,6 @@ public class KeepBedInventoryNeoForge {
     }
 
     void xpDropped(LivingExperienceDropEvent event) {
-
+        event.setDroppedExperience(KeepBedInventory.getExperienceDropped(event.getEntity(),event.getOriginalExperience()));
     }
 }

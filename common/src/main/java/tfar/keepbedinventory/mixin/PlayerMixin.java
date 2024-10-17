@@ -23,6 +23,7 @@ public abstract class PlayerMixin extends LivingEntity implements ServerPlayerDu
 
     long bedTimeStamp;
     SavedInventory savedInventory = new SavedInventory();
+    int savedLevels;
 
 
     @Inject(method = "dropEquipment",at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;destroyVanishingCursedItems()V"))
@@ -33,12 +34,14 @@ public abstract class PlayerMixin extends LivingEntity implements ServerPlayerDu
     @Inject(method = "addAdditionalSaveData",at = @At("HEAD"))
     private void addExtraData(CompoundTag compound, CallbackInfo ci) {
         compound.putLong(KeepBedInventory.BED_BOUND,bedTimeStamp);
+        compound.putInt("SavedLevels",savedLevels);
         compound.put("SavedInventory", savedInventory.save(new ListTag(),this.registryAccess()));
     }
 
     @Inject(method = "readAdditionalSaveData",at = @At("HEAD"))
     private void readExtraData(CompoundTag compound, CallbackInfo ci) {
         bedTimeStamp = compound.getLong(KeepBedInventory.BED_BOUND);
+        savedLevels = compound.getInt("SavedLevels");
         ListTag listtag = compound.getList("SavedInventory", Tag.TAG_COMPOUND);
         savedInventory.load(listtag,this.registryAccess());
     }
@@ -58,6 +61,15 @@ public abstract class PlayerMixin extends LivingEntity implements ServerPlayerDu
         return savedInventory;
     }
 
+    @Override
+    public void setSavedLevels(int levels) {
+        savedLevels = levels;
+    }
+
+    @Override
+    public int getSavedLevels() {
+        return savedLevels;
+    }
 
     protected PlayerMixin(EntityType<? extends LivingEntity> entityType, Level level) {
         super(entityType, level);

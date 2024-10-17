@@ -8,10 +8,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RespawnAnchorBlock;
@@ -48,6 +50,7 @@ public class KeepBedInventory {
             final List<NonNullList<ItemStack>> compartments = ImmutableList.of(inventory.items, inventory.armor, inventory.offhand);
             long time = player.level().getGameTime();
             ((ServerPlayerDuck) player).setLastValidTimestamp(time);
+            ((ServerPlayerDuck)player).setSavedLevels(player.experienceLevel);
             for (List<ItemStack> list : compartments) {
                 for (int i = 0; i < list.size(); i++) {
                     ItemStack itemstack = list.get(i);
@@ -94,7 +97,7 @@ public class KeepBedInventory {
     }
 
     public static void clone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean wasDeath) {
-        if (wasDeath && newPlayer.getRespawnPosition() != null) {
+        if (wasDeath) {
             Inventory newInventory = newPlayer.getInventory();
             SavedInventory oldSavedInventory = ((ServerPlayerDuck) oldPlayer).getSavedInventory();
             for (int i = 0; i < newInventory.getContainerSize(); i++) {
@@ -107,6 +110,11 @@ public class KeepBedInventory {
                 }
             }
             oldSavedInventory.clearContent();
+            if (isRespawnValid(oldPlayer) && !newPlayer.serverLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+                int oldLevels = oldPlayer.experienceLevel;
+                int newLevels = Math.min(oldLevels, ((ServerPlayerDuck) oldPlayer).getSavedLevels());
+                newPlayer.experienceLevel = newLevels;
+            }
         }
         ((ServerPlayerDuck) newPlayer).setLastValidTimestamp(((ServerPlayerDuck) oldPlayer).getLastValidTimestamp());
     }
@@ -133,11 +141,6 @@ public class KeepBedInventory {
                 && (forced || blockstate.getValue(RespawnAnchorBlock.CHARGE) > 0)
                 && RespawnAnchorBlock.canSetSpawn(level)) {
             Optional<Vec3> optional = RespawnAnchorBlock.findStandUpPosition(EntityType.PLAYER, level, pos);
-            if (!forced && optional.isPresent()) {
-                level.setBlock(
-                        pos, blockstate.setValue(RespawnAnchorBlock.CHARGE, blockstate.getValue(RespawnAnchorBlock.CHARGE) - 1), 3
-                );
-            }
 
             return optional.map(vec3 -> ServerPlayer.RespawnPosAngle.of(vec3, pos));
         } else if (block instanceof BedBlock && BedBlock.canSetSpawn(level)) {
@@ -151,11 +154,26 @@ public class KeepBedInventory {
             boolean flag1 = blockstate1.getBlock().isPossibleToRespawnInThis(blockstate1);
             return flag && flag1
                     ? Optional.of(
-                    new ServerPlayer.RespawnPosAngle(
-                            new Vec3((double) pos.getX() + 0.5, (double) pos.getY() + 0.1, (double) pos.getZ() + 0.5), angle
-                    )
+                    new ServerPlayer.RespawnPosAngle(new Vec3(pos.getX() + 0.5, pos.getY() + 0.1,  pos.getZ() + 0.5), angle)
             ) : Optional.empty();
         }
     }
 
+    public static int getExperienceDropped(LivingEntity living,int original) {
+        if (living instanceof ServerPlayer player) {
+            ServerLevel level = player.serverLevel();
+            if (!level.getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+                if (KeepBedInventory.isRespawnValid(player)) {
+                    ServerPlayerDuck playerDuck = (ServerPlayerDuck) player;
+                    int savedLevels = playerDuck.getSavedLevels();
+                    if (savedLevels >= player.experienceLevel) {
+                        return 0;
+                    } else {
+                        return 7 * (player.experienceLevel - savedLevels);
+                    }
+                }
+            }
+        }
+        return original;
+    }
 }
