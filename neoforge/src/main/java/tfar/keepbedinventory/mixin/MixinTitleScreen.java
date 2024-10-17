@@ -1,6 +1,6 @@
-package com.example.examplemod.mixin;
+package tfar.keepbedinventory.mixin;
 
-import com.example.examplemod.Constants;
+import tfar.keepbedinventory.KeepBedInventory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,7 +14,7 @@ public class MixinTitleScreen {
     @Inject(at = @At("HEAD"), method = "init()V")
     private void init(CallbackInfo info) {
 
-        Constants.LOG.info("This line is printed by an example mod mixin from NeoForge!");
-        Constants.LOG.info("MC Version: {}", Minecraft.getInstance().getVersionType());
+        KeepBedInventory.LOG.info("This line is printed by an example mod mixin from NeoForge!");
+        KeepBedInventory.LOG.info("MC Version: {}", Minecraft.getInstance().getVersionType());
     }
 }
