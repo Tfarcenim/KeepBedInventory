@@ -98,18 +98,7 @@ public class KeepBedInventory {
 
     public static void clone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean wasDeath) {
         if (wasDeath) {
-            Inventory newInventory = newPlayer.getInventory();
-            SavedInventory oldSavedInventory = ((ServerPlayerDuck) oldPlayer).getSavedInventory();
-            for (int i = 0; i < newInventory.getContainerSize(); i++) {
-                ItemStack stack = newInventory.getItem(i);
-                if (stack.isEmpty()) {
-                    ItemStack savedStack = oldSavedInventory.getItem(i);
-                    if (!savedStack.isEmpty()) {
-                        newInventory.setItem(i, savedStack);
-                    }
-                }
-            }
-            oldSavedInventory.clearContent();
+            copySavedInventory(oldPlayer, newPlayer);
             if (isRespawnValid(oldPlayer) && !newPlayer.serverLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
                 int oldLevels = oldPlayer.experienceLevel;
                 int newLevels = Math.min(oldLevels, ((ServerPlayerDuck) oldPlayer).getSavedLevels());
@@ -117,6 +106,21 @@ public class KeepBedInventory {
             }
         }
         ((ServerPlayerDuck) newPlayer).setLastValidTimestamp(((ServerPlayerDuck) oldPlayer).getLastValidTimestamp());
+    }
+
+    private static void copySavedInventory(ServerPlayer oldPlayer, ServerPlayer newPlayer) {
+        Inventory newInventory = newPlayer.getInventory();
+        SavedInventory oldSavedInventory = ((ServerPlayerDuck) oldPlayer).getSavedInventory();
+        for (int i = 0; i < newInventory.getContainerSize(); i++) {
+            ItemStack stack = newInventory.getItem(i);
+            if (stack.isEmpty()) {
+                ItemStack savedStack = oldSavedInventory.getItem(i);
+                if (!savedStack.isEmpty()) {
+                    newInventory.setItem(i, savedStack);
+                }
+            }
+        }
+        oldSavedInventory.clearContent();
     }
 
     public static boolean isRespawnValid(ServerPlayer player) {
