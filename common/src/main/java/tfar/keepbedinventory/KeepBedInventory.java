@@ -5,15 +5,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
 // This class is part of the common project meaning it is shared between all supported loaders. Code written here can only
 // import and access the vanilla codebase, libraries used by vanilla, and optionally third party libraries that provide
@@ -39,7 +47,7 @@ public class KeepBedInventory {
             Inventory inventory = player.getInventory();
             final List<NonNullList<ItemStack>> compartments = ImmutableList.of(inventory.items, inventory.armor, inventory.offhand);
             long time = player.level().getGameTime();
-            ((ServerPlayerDuck)player).setLastValidTimestamp(time);
+            ((ServerPlayerDuck) player).setLastValidTimestamp(time);
             for (List<ItemStack> list : compartments) {
                 for (int i = 0; i < list.size(); i++) {
                     ItemStack itemstack = list.get(i);
@@ -62,7 +70,7 @@ public class KeepBedInventory {
 
     public static void saveBedItems(Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
-            if (serverPlayer.getRespawnPosition() != null) {
+            if (isRespawnValid(serverPlayer)) {
                 Inventory inventory = player.getInventory();
                 SavedInventory savedInventory = ((ServerPlayerDuck) player).getSavedInventory();
                 for (int i = 0; i < inventory.getContainerSize(); i++) {
@@ -85,19 +93,69 @@ public class KeepBedInventory {
         }
     }
 
-    public static void clone(ServerPlayer oldPlayer,ServerPlayer newPlayer,boolean wasDeath) {
-        Inventory newInventory = newPlayer.getInventory();
-        SavedInventory oldSavedInventory = ((ServerPlayerDuck)oldPlayer).getSavedInventory();
-        for (int i = 0; i < newInventory.getContainerSize(); i++) {
-            ItemStack stack = newInventory.getItem(i);
-            if (stack.isEmpty()) {
-                ItemStack savedStack = oldSavedInventory.getItem(i);
-                if (!savedStack.isEmpty()) {
-                    newInventory.setItem(i,savedStack);
+    public static void clone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean wasDeath) {
+        if (wasDeath && newPlayer.getRespawnPosition() != null) {
+            Inventory newInventory = newPlayer.getInventory();
+            SavedInventory oldSavedInventory = ((ServerPlayerDuck) oldPlayer).getSavedInventory();
+            for (int i = 0; i < newInventory.getContainerSize(); i++) {
+                ItemStack stack = newInventory.getItem(i);
+                if (stack.isEmpty()) {
+                    ItemStack savedStack = oldSavedInventory.getItem(i);
+                    if (!savedStack.isEmpty()) {
+                        newInventory.setItem(i, savedStack);
+                    }
                 }
             }
+            oldSavedInventory.clearContent();
         }
-        oldSavedInventory.clearContent();
-        ((ServerPlayerDuck)newPlayer).setLastValidTimestamp(((ServerPlayerDuck)oldPlayer).getLastValidTimestamp());
+        ((ServerPlayerDuck) newPlayer).setLastValidTimestamp(((ServerPlayerDuck) oldPlayer).getLastValidTimestamp());
     }
+
+    public static boolean isRespawnValid(ServerPlayer player) {
+        BlockPos blockpos = player.getRespawnPosition();
+        float f = player.getRespawnAngle();
+        boolean flag = player.isRespawnForced();
+        ServerLevel serverlevel = player.server.getLevel(player.getRespawnDimension());
+        if (serverlevel != null && blockpos != null) {
+            Optional<ServerPlayer.RespawnPosAngle> optional = findRespawnBlock(serverlevel, blockpos, f, flag);
+            return optional.isPresent();
+        }
+        return false;
+    }
+
+
+    private static Optional<ServerPlayer.RespawnPosAngle> findRespawnBlock(
+            ServerLevel level, BlockPos pos, float angle, boolean forced
+    ) {
+        BlockState blockstate = level.getBlockState(pos);
+        Block block = blockstate.getBlock();
+        if (block instanceof RespawnAnchorBlock
+                && (forced || blockstate.getValue(RespawnAnchorBlock.CHARGE) > 0)
+                && RespawnAnchorBlock.canSetSpawn(level)) {
+            Optional<Vec3> optional = RespawnAnchorBlock.findStandUpPosition(EntityType.PLAYER, level, pos);
+            if (!forced && optional.isPresent()) {
+                level.setBlock(
+                        pos, blockstate.setValue(RespawnAnchorBlock.CHARGE, blockstate.getValue(RespawnAnchorBlock.CHARGE) - 1), 3
+                );
+            }
+
+            return optional.map(vec3 -> ServerPlayer.RespawnPosAngle.of(vec3, pos));
+        } else if (block instanceof BedBlock && BedBlock.canSetSpawn(level)) {
+            return BedBlock.findStandUpPosition(EntityType.PLAYER, level, pos, blockstate.getValue(BedBlock.FACING), angle)
+                    .map(p_348148_ -> ServerPlayer.RespawnPosAngle.of(p_348148_, pos));
+        } else if (!forced) {
+            return Optional.empty();
+        } else {
+            boolean flag = block.isPossibleToRespawnInThis(blockstate);
+            BlockState blockstate1 = level.getBlockState(pos.above());
+            boolean flag1 = blockstate1.getBlock().isPossibleToRespawnInThis(blockstate1);
+            return flag && flag1
+                    ? Optional.of(
+                    new ServerPlayer.RespawnPosAngle(
+                            new Vec3((double) pos.getX() + 0.5, (double) pos.getY() + 0.1, (double) pos.getZ() + 0.5), angle
+                    )
+            ) : Optional.empty();
+        }
+    }
+
 }

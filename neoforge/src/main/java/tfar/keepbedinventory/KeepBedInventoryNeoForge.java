@@ -7,6 +7,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingExperienceDropEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerSetSpawnEvent;
 
@@ -23,6 +24,7 @@ public class KeepBedInventoryNeoForge {
         KeepBedInventory.init();
         NeoForge.EVENT_BUS.addListener(EventPriority.LOW, this::spawnSet);
         NeoForge.EVENT_BUS.addListener(this::playerClone);
+        NeoForge.EVENT_BUS.addListener(this::xpDropped);
     }
 
 
@@ -34,5 +36,9 @@ public class KeepBedInventoryNeoForge {
 
     void playerClone(PlayerEvent.Clone event) {
         KeepBedInventory.clone((ServerPlayer) event.getOriginal(), (ServerPlayer) event.getEntity(),event.isWasDeath());
+    }
+
+    void xpDropped(LivingExperienceDropEvent event) {
+
     }
 }
